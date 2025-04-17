@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard de Pedidos</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 2rem; }
+    h1 { text-align: center; }
+    section { background: #fff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+    label { display: block; margin-top: 1rem; }
+    input, textarea, button {
+      width: 100%; padding: .5rem; margin-top: .5rem;
+      border-radius: 5px; border: 1px solid #ccc;
+    }
+    button { background: #007bff; color: #fff; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    pre { background: #eee; padding: 1rem; border-radius: 5px; overflow-x: auto; }
+    .response { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Dashboard de Pedidos</h1>
+
+  <!-- Criar Pedido -->
+  <section>
+    <h2>1. Criar Pedido</h2>
+    <form id="formCreate">
+      <label>ID do Cliente:<input type="number" id="c_clienteId" required></label>
+      <label>ID do Restaurante:<input type="number" id="c_restauranteId" required></label>
+      <label>Itens (JSON):<textarea id="c_itens" rows="4">[{"pratoId":101,"quantidade":2}]</textarea></label>
+      <button type="submit">Criar</button>
+    </form>
+    <div class="response"><pre id="r_create">Aguardando envio...</pre></div>
+  </section>
+
+  <!-- Consultar Pedido -->
+  <section>
+    <h2>2. Consultar Pedido</h2>
+    <form id="formGet">
+      <label>ID do Pedido:<input type="number" id="g_orderId" required></label>
+      <button type="submit">Buscar</button>
+    </form>
+    <div class="response"><pre id="r_get">Aguardando busca...</pre></div>
+  </section>
+
+  <!-- Atualizar Status -->
+  <section>
+    <h2>3. Atualizar Status</h2>
+    <form id="formUpdate">
+      <label>ID do Pedido:<input type="number" id="u_orderId" required></label>
+      <label>Novo Status:
+        <select id="u_status">
+          <option value="em preparo">em preparo</option>
+          <option value="a caminho">a caminho</option>
+          <option value="entregue">entregue</option>
+        </select>
+      </label>
+      <button type="submit">Atualizar</button>
+    </form>
+    <div class="response"><pre id="r_update">Aguardando atualização...</pre></div>
+  </section>
+
+  <!-- Atualizar Pagamento -->
+  <section>
+    <h2>4. Atualizar Status de Pagamento</h2>
+    <form id="formPayment">
+      <label>ID do Pedido:<input type="number" id="p_orderId" required></label>
+      <label>Status de Pagamento (1 para confirmado, 0 para não pago):
+        <input type="number" id="paymentStatus" required min="0" max="1" />
+      </label>
+      <button type="submit">Atualizar Pagamento</button>
+    </form>
+    <div class="response"><pre id="r_payment">Aguardando atualização...</pre></div>
+  </section>
+
+  <script>
+    // Helpers
+    async function handleFetch(url, options, outEl) {
+      try {
+        const res = await fetch(url, options);
+        const data = await res.json();
+        if (!res.ok) throw data;
+        outEl.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        outEl.textContent = 'Erro: ' + (err.error || JSON.stringify(err));
+      }
+    }
+
+    // Criar
+    document.getElementById('formCreate').addEventListener('submit', e => {
+      e.preventDefault();
+      const cli = parseInt(document.getElementById('c_clienteId').value);
+      const resId = parseInt(document.getElementById('c_restauranteId').value);
+      let itens;
+      try { itens = JSON.parse(document.getElementById('c_itens').value); }
+      catch { return document.getElementById('r_create').textContent = 'JSON inválido em Itens.'; }
+      handleFetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clienteId: cli, restauranteId: resId, itens })
+      }, document.getElementById('r_create'));
+    });
+
+    // Consultar
+    document.getElementById('formGet').addEventListener('submit', e => {
+      e.preventDefault();
+      const id = parseInt(document.getElementById('g_orderId').value);
+      handleFetch(`/api/orders/${id}`, { method: 'GET' }, document.getElementById('r_get'));
+    });
+
+    // Atualizar
+    document.getElementById('formUpdate').addEventListener('submit', e => {
+      e.preventDefault();
+      const id = parseInt(document.getElementById('u_orderId').value);
+      const status = document.getElementById('u_status').value;
+      handleFetch(`/api/orders/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      }, document.getElementById('r_update'));
+    });
+
+    // Atualizar Pagamento
+    document.getElementById('formPayment').addEventListener('submit', e => {
+      e.preventDefault();
+      const orderId = parseInt(document.getElementById('p_orderId').value); // ID do pedido
+      const pagamentoStatus = parseInt(document.getElementById('paymentStatus').value);
+
+      handleFetch(`/api/orders/${orderId}/payment`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pagamentoConfirmado: pagamentoStatus })
+      }, document.getElementById('r_payment'));
+    });
+  </script>
+</body>
+</html>
