@@ -9,7 +9,7 @@
     h1 { text-align: center; }
     section { background: #fff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
     label { display: block; margin-top: 1rem; }
-    input, textarea, button {
+    input, select, button {
       width: 100%; padding: .5rem; margin-top: .5rem;
       border-radius: 5px; border: 1px solid #ccc;
     }
@@ -28,8 +28,24 @@
     <form id="formCreate">
       <label>ID do Cliente:<input type="number" id="c_clienteId" required></label>
       <label>ID do Restaurante:<input type="number" id="c_restauranteId" required></label>
-      <label>Itens (JSON):<textarea id="c_itens" rows="4">[{"pratoId":101,"quantidade":2}]</textarea></label>
-      <button type="submit">Criar</button>
+
+      <label>Categoria:
+        <select id="selectCategoria" required>
+          <option value="">Selecione uma categoria</option>
+        </select>
+      </label>
+
+      <label>Prato:
+        <select id="selectPrato" required disabled>
+          <option value="">Selecione uma categoria primeiro</option>
+        </select>
+      </label>
+
+      <label>Quantidade:
+        <input type="number" id="inputQuantidade" min="1" value="1" required />
+      </label>
+
+      <button type="submit">Criar Pedido</button>
     </form>
     <div class="response"><pre id="r_create">Aguardando envio...</pre></div>
   </section>
@@ -75,7 +91,6 @@
   </section>
 
   <script>
-    // Helpers
     async function handleFetch(url, options, outEl) {
       try {
         const res = await fetch(url, options);
@@ -87,29 +102,31 @@
       }
     }
 
-    // Criar
+    // Criar pedido
     document.getElementById('formCreate').addEventListener('submit', e => {
       e.preventDefault();
-      const cli = parseInt(document.getElementById('c_clienteId').value);
-      const resId = parseInt(document.getElementById('c_restauranteId').value);
-      let itens;
-      try { itens = JSON.parse(document.getElementById('c_itens').value); }
-      catch { return document.getElementById('r_create').textContent = 'JSON inválido em Itens.'; }
+      const clienteId = parseInt(document.getElementById('c_clienteId').value);
+      const restauranteId = parseInt(document.getElementById('c_restauranteId').value);
+      const pratoId = parseInt(document.getElementById('selectPrato').value);
+      const quantidade = parseInt(document.getElementById('inputQuantidade').value);
+
+      const itens = [{ pratoId, quantidade }];
+
       handleFetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clienteId: cli, restauranteId: resId, itens })
+        body: JSON.stringify({ clienteId, restauranteId, itens })
       }, document.getElementById('r_create'));
     });
 
-    // Consultar
+    // Consultar pedido
     document.getElementById('formGet').addEventListener('submit', e => {
       e.preventDefault();
       const id = parseInt(document.getElementById('g_orderId').value);
       handleFetch(`/api/orders/${id}`, { method: 'GET' }, document.getElementById('r_get'));
     });
 
-    // Atualizar
+    // Atualizar status
     document.getElementById('formUpdate').addEventListener('submit', e => {
       e.preventDefault();
       const id = parseInt(document.getElementById('u_orderId').value);
@@ -121,10 +138,10 @@
       }, document.getElementById('r_update'));
     });
 
-    // Atualizar Pagamento
+    // Atualizar pagamento
     document.getElementById('formPayment').addEventListener('submit', e => {
       e.preventDefault();
-      const orderId = parseInt(document.getElementById('p_orderId').value); // ID do pedido
+      const orderId = parseInt(document.getElementById('p_orderId').value);
       const pagamentoStatus = parseInt(document.getElementById('paymentStatus').value);
 
       handleFetch(`/api/orders/${orderId}/payment`, {
@@ -133,6 +150,63 @@
         body: JSON.stringify({ pagamentoConfirmado: pagamentoStatus })
       }, document.getElementById('r_payment'));
     });
+
+    // Carregar categorias e pratos
+    async function carregarCategorias() {
+      try {
+        const res = await fetch('/api/pratos'); // Busca todos os pratos
+        const pratos = await res.json();
+
+        const categorias = [...new Set(pratos.map(p => p.categoria_id))];
+        const select = document.getElementById('selectCategoria');
+        select.innerHTML = '<option value="">Selecione uma categoria</option>';
+
+        categorias.forEach(id => {
+          const catNome = pratos.find(p => p.categoria_id === id)?.categoria_nome || `Categoria ${id}`;
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = catNome;
+          select.appendChild(opt);
+        });
+
+        // Armazena os pratos globalmente
+        window._todosPratos = pratos;
+
+      } catch (err) {
+        console.error('Erro ao carregar categorias:', err);
+      }
+    }
+
+    function carregarPratosPorCategoria(categoriaId) {
+      const pratos = window._todosPratos || [];
+      const select = document.getElementById('selectPrato');
+      select.innerHTML = '<option value="">Selecione um prato</option>';
+
+      const filtrados = pratos.filter(p => p.categoria_id == categoriaId);
+      filtrados.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.nome} - R$ ${parseFloat(p.preco).toFixed(2)}`;
+        select.appendChild(opt);
+      });
+
+      select.disabled = filtrados.length === 0;
+    }
+
+    // Eventos
+    document.getElementById('selectCategoria').addEventListener('change', e => {
+      const categoriaId = e.target.value;
+      if (categoriaId) {
+        carregarPratosPorCategoria(categoriaId);
+      } else {
+        const selectPrato = document.getElementById('selectPrato');
+        selectPrato.innerHTML = '<option value="">Selecione um prato</option>';
+        selectPrato.disabled = true;
+      }
+    });
+
+    // Iniciar carregamento
+    carregarCategorias();
   </script>
 </body>
 </html>
