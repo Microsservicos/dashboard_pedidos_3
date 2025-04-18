@@ -1,212 +1,344 @@
 <!DOCTYPE html>
+<!-- Define o tipo de documento como HTML5 -->
 <html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard de Pedidos</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 2rem; }
-    h1 { text-align: center; }
-    section { background: #fff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
-    label { display: block; margin-top: 1rem; }
-    input, select, button {
-      width: 100%; padding: .5rem; margin-top: .5rem;
-      border-radius: 5px; border: 1px solid #ccc;
-    }
-    button { background: #007bff; color: #fff; border: none; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    pre { background: #eee; padding: 1rem; border-radius: 5px; overflow-x: auto; }
-    .response { margin-top: 1rem; }
-  </style>
-</head>
-<body>
-  <h1>Dashboard de Pedidos</h1>
-
-  <!-- Criar Pedido -->
-  <section>
-    <h2>1. Criar Pedido</h2>
-    <form id="formCreate">
-      <label>ID do Cliente:<input type="number" id="c_clienteId" required></label>
-      <label>ID do Restaurante:<input type="number" id="c_restauranteId" required></label>
-
-      <label>Categoria:
-        <select id="selectCategoria" required>
-          <option value="">Selecione uma categoria</option>
-        </select>
-      </label>
-
-      <label>Prato:
-        <select id="selectPrato" required disabled>
-          <option value="">Selecione uma categoria primeiro</option>
-        </select>
-      </label>
-
-      <label>Quantidade:
-        <input type="number" id="inputQuantidade" min="1" value="1" required />
-      </label>
-
-      <button type="submit">Criar Pedido</button>
-    </form>
-    <div class="response"><pre id="r_create">Aguardando envio...</pre></div>
-  </section>
-
-  <!-- Consultar Pedido -->
-  <section>
-    <h2>2. Consultar Pedido</h2>
-    <form id="formGet">
-      <label>ID do Pedido:<input type="number" id="g_orderId" required></label>
-      <button type="submit">Buscar</button>
-    </form>
-    <div class="response"><pre id="r_get">Aguardando busca...</pre></div>
-  </section>
-
-  <!-- Atualizar Status -->
-  <section>
-    <h2>3. Atualizar Status</h2>
-    <form id="formUpdate">
-      <label>ID do Pedido:<input type="number" id="u_orderId" required></label>
-      <label>Novo Status:
-        <select id="u_status">
-          <option value="em preparo">em preparo</option>
-          <option value="a caminho">a caminho</option>
-          <option value="entregue">entregue</option>
-        </select>
-      </label>
-      <button type="submit">Atualizar</button>
-    </form>
-    <div class="response"><pre id="r_update">Aguardando atualização...</pre></div>
-  </section>
-
-  <!-- Atualizar Pagamento -->
-  <section>
-    <h2>4. Atualizar Status de Pagamento</h2>
-    <form id="formPayment">
-      <label>ID do Pedido:<input type="number" id="p_orderId" required></label>
-      <label>Status de Pagamento (1 para confirmado, 0 para não pago):
-        <input type="number" id="paymentStatus" required min="0" max="1" />
-      </label>
-      <button type="submit">Atualizar Pagamento</button>
-    </form>
-    <div class="response"><pre id="r_payment">Aguardando atualização...</pre></div>
-  </section>
-
-  <script>
-    async function handleFetch(url, options, outEl) {
-      try {
-        const res = await fetch(url, options);
-        const data = await res.json();
-        if (!res.ok) throw data;
-        outEl.textContent = JSON.stringify(data, null, 2);
-      } catch (err) {
-        outEl.textContent = 'Erro: ' + (err.error || JSON.stringify(err));
+  <!-- Inicia o HTML e define o idioma como português do Brasil -->
+  <head>
+    <!-- Início do cabeçalho da página -->
+    <meta charset="UTF-8" />
+    <!-- Define o conjunto de caracteres como UTF-8 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Define que a página deve ser responsiva -->
+    <title>Dashboard de Pedidos</title>
+    <!-- Define o título da aba do navegador -->
+    <!-- Início da estilização CSS embutida -->
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        padding: 2rem;
+      } /* Estilo geral do corpo da página */
+      h1 {
+        text-align: center;
+      } /* Centraliza o título principal */
+      section {
+        background: #fff; /* Fundo branco para as seções */
+        padding: 1.5rem; /* Espaçamento interno */
+        border-radius: 8px; /* Cantos arredondados */
+        margin-bottom: 2rem; /* Espaçamento entre seções */
+        max-width: 600px; /* Largura máxima */
+        margin-left: auto; /* Centraliza horizontalmente */
+        margin-right: auto;
       }
-    }
-
-    // Criar pedido
-    document.getElementById('formCreate').addEventListener('submit', e => {
-      e.preventDefault();
-      const clienteId = parseInt(document.getElementById('c_clienteId').value);
-      const restauranteId = parseInt(document.getElementById('c_restauranteId').value);
-      const pratoId = parseInt(document.getElementById('selectPrato').value);
-      const quantidade = parseInt(document.getElementById('inputQuantidade').value);
-
-      const itens = [{ pratoId, quantidade }];
-
-      handleFetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clienteId, restauranteId, itens })
-      }, document.getElementById('r_create'));
-    });
-
-    // Consultar pedido
-    document.getElementById('formGet').addEventListener('submit', e => {
-      e.preventDefault();
-      const id = parseInt(document.getElementById('g_orderId').value);
-      handleFetch(`/api/orders/${id}`, { method: 'GET' }, document.getElementById('r_get'));
-    });
-
-    // Atualizar status
-    document.getElementById('formUpdate').addEventListener('submit', e => {
-      e.preventDefault();
-      const id = parseInt(document.getElementById('u_orderId').value);
-      const status = document.getElementById('u_status').value;
-      handleFetch(`/api/orders/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      }, document.getElementById('r_update'));
-    });
-
-    // Atualizar pagamento
-    document.getElementById('formPayment').addEventListener('submit', e => {
-      e.preventDefault();
-      const orderId = parseInt(document.getElementById('p_orderId').value);
-      const pagamentoStatus = parseInt(document.getElementById('paymentStatus').value);
-
-      handleFetch(`/api/orders/${orderId}/payment`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pagamentoConfirmado: pagamentoStatus })
-      }, document.getElementById('r_payment'));
-    });
-
-    // Carregar categorias e pratos
-    async function carregarCategorias() {
-      try {
-        const res = await fetch('/api/pratos'); // Busca todos os pratos
-        const pratos = await res.json();
-
-        const categorias = [...new Set(pratos.map(p => p.categoria_id))];
-        const select = document.getElementById('selectCategoria');
-        select.innerHTML = '<option value="">Selecione uma categoria</option>';
-
-        categorias.forEach(id => {
-          const catNome = pratos.find(p => p.categoria_id === id)?.categoria_nome || `Categoria ${id}`;
-          const opt = document.createElement('option');
-          opt.value = id;
-          opt.textContent = catNome;
-          select.appendChild(opt);
-        });
-
-        // Armazena os pratos globalmente
-        window._todosPratos = pratos;
-
-      } catch (err) {
-        console.error('Erro ao carregar categorias:', err);
+      label {
+        display: block;
+        margin-top: 1rem;
+      } /* Cada rótulo ocupa uma linha inteira e tem espaçamento acima */
+      input,
+      select,
+      button {
+        width: 100%; /* Largura total */
+        padding: 0.5rem; /* Espaçamento interno */
+        margin-top: 0.5rem; /* Espaçamento superior */
+        border-radius: 5px; /* Bordas arredondadas */
+        border: 1px solid #ccc; /* Borda cinza clara */
       }
-    }
+      button {
+        background: #007bff; /* Fundo azul */
+        color: #fff; /* Texto branco */
+        border: none; /* Sem borda */
+        cursor: pointer; /* Cursor em formato de mão */
+      }
+      button:hover {
+        background: #0056b3;
+      } /* Cor do botão ao passar o mouse */
+      pre {
+        background: #eee; /* Fundo cinza claro */
+        padding: 1rem; /* Espaçamento interno */
+        border-radius: 5px; /* Bordas arredondadas */
+        overflow-x: auto; /* Rolagem horizontal se necessário */
+      }
+      .response {
+        margin-top: 1rem;
+      } /* Espaçamento acima da resposta */
+    </style>
+    <!-- Fim da estilização -->
+  </head>
+  <!-- Fim do cabeçalho -->
 
-    function carregarPratosPorCategoria(categoriaId) {
-      const pratos = window._todosPratos || [];
-      const select = document.getElementById('selectPrato');
-      select.innerHTML = '<option value="">Selecione um prato</option>';
+  <body>
+    <!-- Início do corpo da página -->
+    <h1>Dashboard de Pedidos</h1>
+    <!-- Título principal da página -->
 
-      const filtrados = pratos.filter(p => p.categoria_id == categoriaId);
-      filtrados.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = `${p.nome} - R$ ${parseFloat(p.preco).toFixed(2)}`;
-        select.appendChild(opt);
+    <!-- Seção para criar pedido -->
+    <section>
+      <h2>1. Criar Pedido</h2>
+      <form id="formCreate">
+        <!-- Formulário de criação de pedido -->
+        <label
+          >ID do Cliente:<input type="number" id="c_clienteId" required
+        /></label>
+        <!-- Campo de entrada para ID do cliente -->
+        <label
+          >ID do Restaurante:<input type="number" id="c_restauranteId" required
+        /></label>
+        <!-- Campo de entrada para ID do restaurante -->
+
+        <label
+          >Categoria:
+          <!-- Label para o select de categoria -->
+          <select id="selectCategoria" required>
+            <!-- Select das categorias de pratos -->
+            <option value="">Selecione uma categoria</option>
+            <!-- Opção padrão -->
+          </select>
+        </label>
+
+        <label
+          >Prato:
+          <!-- Label para o select de pratos -->
+          <select id="selectPrato" required disabled>
+            <!-- Select dos pratos (inicialmente desativado) -->
+            <option value="">Selecione uma categoria primeiro</option>
+            <!-- Opção padrão -->
+          </select>
+        </label>
+
+        <label
+          >Quantidade:
+          <!-- Label para a quantidade -->
+          <input
+            type="number"
+            id="inputQuantidade"
+            min="1"
+            value="1"
+            required
+          />
+          <!-- Campo numérico da quantidade -->
+        </label>
+
+        <button type="submit">Criar Pedido</button>
+        <!-- Botão para criar pedido -->
+      </form>
+      <div class="response"><pre id="r_create">Aguardando envio...</pre></div>
+      <!-- Área para mostrar a resposta da API -->
+    </section>
+
+    <!-- Seção para consultar pedido -->
+    <section>
+      <h2>2. Consultar Pedido</h2>
+      <form id="formGet">
+        <!-- Formulário para buscar pedido -->
+        <label
+          >ID do Pedido:<input type="number" id="g_orderId" required
+        /></label>
+        <!-- Campo de entrada do ID do pedido -->
+        <button type="submit">Buscar</button>
+        <!-- Botão de busca -->
+      </form>
+      <div class="response"><pre id="r_get">Aguardando busca...</pre></div>
+      <!-- Área de resposta da busca -->
+    </section>
+
+    <!-- Seção para atualizar status do pedido -->
+    <section>
+      <h2>3. Atualizar Status</h2>
+      <form id="formUpdate">
+        <!-- Formulário para atualizar o status -->
+        <label
+          >ID do Pedido:<input type="number" id="u_orderId" required
+        /></label>
+        <!-- Campo para o ID -->
+        <label
+          >Novo Status:
+          <select id="u_status">
+            <!-- Select com os status possíveis -->
+            <option value="em preparo">em preparo</option>
+            <option value="a caminho">a caminho</option>
+            <option value="entregue">entregue</option>
+          </select>
+        </label>
+        <button type="submit">Atualizar</button>
+        <!-- Botão para enviar atualização -->
+      </form>
+      <div class="response">
+        <pre id="r_update">Aguardando atualização...</pre>
+      </div>
+      <!-- Área de resposta da atualização -->
+    </section>
+
+    <!-- Seção para atualizar status de pagamento -->
+    <section>
+      <h2>4. Atualizar Status de Pagamento</h2>
+      <form id="formPayment">
+        <!-- Formulário para atualizar pagamento -->
+        <label
+          >ID do Pedido:<input type="number" id="p_orderId" required
+        /></label>
+        <!-- Campo de ID -->
+        <label
+          >Status de Pagamento (1 para confirmado, 0 para não pago):
+          <!-- Instrução -->
+          <input type="number" id="paymentStatus" required min="0" max="1" />
+          <!-- Campo com valor 0 ou 1 -->
+        </label>
+        <button type="submit">Atualizar Pagamento</button>
+        <!-- Botão de envio -->
+      </form>
+      <div class="response">
+        <pre id="r_payment">Aguardando atualização...</pre>
+      </div>
+      <!-- Resposta -->
+    </section>
+
+    <script>
+      <!-- Início do JavaScript -->
+
+      // Função reutilizável para chamadas à API
+      async function handleFetch(url, options, outEl) {
+        try {
+          const res = await fetch(url, options); // Faz requisição à API
+          const data = await res.json(); // Converte resposta em JSON
+          if (!res.ok) throw data; // Se a resposta não for ok, lança erro
+          outEl.textContent = JSON.stringify(data, null, 2); // Mostra o JSON formatado na tela
+        } catch (err) {
+          outEl.textContent = "Erro: " + (err.error || JSON.stringify(err)); // Mostra erro
+        }
+      }
+
+      // Evento de envio do formulário de criação
+      document.getElementById("formCreate").addEventListener("submit", (e) => {
+        e.preventDefault(); // Evita recarregamento da página
+        const clienteId = parseInt(
+          document.getElementById("c_clienteId").value
+        ); // Pega ID do cliente
+        const restauranteId = parseInt(
+          document.getElementById("c_restauranteId").value
+        ); // Pega ID do restaurante
+        const pratoId = parseInt(document.getElementById("selectPrato").value); // Pega ID do prato
+        const quantidade = parseInt(
+          document.getElementById("inputQuantidade").value
+        ); // Pega quantidade
+
+        const itens = [{ pratoId, quantidade }]; // Cria array de itens
+
+        handleFetch(
+          "/api/orders",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clienteId, restauranteId, itens }), // Envia o pedido
+          },
+          document.getElementById("r_create")
+        );
       });
 
-      select.disabled = filtrados.length === 0;
-    }
+      // Evento de consulta de pedido
+      document.getElementById("formGet").addEventListener("submit", (e) => {
+        e.preventDefault(); // Evita envio padrão
+        const id = parseInt(document.getElementById("g_orderId").value); // Pega ID
+        handleFetch(
+          `/api/orders/${id}`,
+          { method: "GET" },
+          document.getElementById("r_get")
+        );
+      });
 
-    // Eventos
-    document.getElementById('selectCategoria').addEventListener('change', e => {
-      const categoriaId = e.target.value;
-      if (categoriaId) {
-        carregarPratosPorCategoria(categoriaId);
-      } else {
-        const selectPrato = document.getElementById('selectPrato');
-        selectPrato.innerHTML = '<option value="">Selecione um prato</option>';
-        selectPrato.disabled = true;
+      // Evento para atualizar status do pedido
+      document.getElementById("formUpdate").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const id = parseInt(document.getElementById("u_orderId").value); // ID do pedido
+        const status = document.getElementById("u_status").value; // Novo status
+        handleFetch(
+          `/api/orders/${id}/status`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }), // Envia novo status
+          },
+          document.getElementById("r_update")
+        );
+      });
+
+      // Evento para atualizar pagamento
+      document.getElementById("formPayment").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const orderId = parseInt(document.getElementById("p_orderId").value); // ID do pedido
+        const pagamentoStatus = parseInt(
+          document.getElementById("paymentStatus").value
+        ); // Status (0 ou 1)
+
+        handleFetch(
+          `/api/orders/${orderId}/payment`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pagamentoConfirmado: pagamentoStatus }), // Envia status
+          },
+          document.getElementById("r_payment")
+        );
+      });
+
+      // Função que carrega categorias com base nos pratos
+      async function carregarCategorias() {
+        try {
+          const res = await fetch("/api/pratos"); // Busca pratos na API
+          const pratos = await res.json(); // Converte resposta
+
+          const categorias = [...new Set(pratos.map((p) => p.categoria_id))]; // Pega categorias únicas
+          const select = document.getElementById("selectCategoria");
+          select.innerHTML =
+            '<option value="">Selecione uma categoria</option>'; // Limpa e adiciona padrão
+
+          categorias.forEach((id) => {
+            const catNome =
+              pratos.find((p) => p.categoria_id === id)?.categoria_nome ||
+              `Categoria ${id}`; // Nome da categoria
+            const opt = document.createElement("option"); // Cria elemento option
+            opt.value = id; // Define valor
+            opt.textContent = catNome; // Define nome exibido
+            select.appendChild(opt); // Adiciona ao select
+          });
+
+          window._todosPratos = pratos; // Salva todos os pratos globalmente
+        } catch (err) {
+          console.error("Erro ao carregar categorias:", err); // Mostra erro no console
+        }
       }
-    });
 
-    // Iniciar carregamento
-    carregarCategorias();
-  </script>
-</body>
+      // Carrega pratos com base na categoria escolhida
+      function carregarPratosPorCategoria(categoriaId) {
+        const pratos = window._todosPratos || []; // Usa pratos armazenados
+        const select = document.getElementById("selectPrato");
+        select.innerHTML = '<option value="">Selecione um prato</option>'; // Limpa o select
+
+        const filtrados = pratos.filter((p) => p.categoria_id == categoriaId); // Filtra pelos da categoria
+        filtrados.forEach((p) => {
+          const opt = document.createElement("option"); // Cria opção
+          opt.value = p.id;
+          opt.textContent = `${p.nome} - R$ ${parseFloat(p.preco).toFixed(2)}`; // Nome + preço
+          select.appendChild(opt); // Adiciona ao select
+        });
+
+        select.disabled = filtrados.length === 0; // Desabilita se não houver pratos
+      }
+
+      // Quando uma categoria for selecionada
+      document
+        .getElementById("selectCategoria")
+        .addEventListener("change", (e) => {
+          const categoriaId = e.target.value;
+          if (categoriaId) {
+            carregarPratosPorCategoria(categoriaId); // Carrega os pratos da categoria
+          } else {
+            const selectPrato = document.getElementById("selectPrato");
+            selectPrato.innerHTML =
+              '<option value="">Selecione um prato</option>'; // Reseta opções
+            selectPrato.disabled = true; // Desabilita select
+          }
+        });
+
+      carregarCategorias(); // Carrega categorias ao carregar a página
+    </script>
+  </body>
 </html>
